@@ -1,0 +1,16 @@
+version: 0.0
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: "arn:aws:elasticloadbalancing:ap-south-1:304534110140:loadbalancer/net/k8s-mind-braintas-1784b43c6e/b5724ada734ac91d"
+        LoadBalancerInfo:
+          ContainerName: "web"
+          ContainerPort: 80
+Hooks:
+  - BeforeInstall:
+      - location: scripts/stop_old.sh
+        timeout: 300
+  - AfterInstall:
+      - location: scripts/start_new.sh
+        timeout: 300
