@@ -16,13 +16,11 @@ phases:
       - echo "Building the Docker image..."
       - IMAGE_TAG=$CODEBUILD_RESOLVED_SOURCE_VERSION
       - docker build -t 304534110140.dkr.ecr.ap-south-1.amazonaws.com/brain-task:latest .
-      - docker tag $REPOSITORY_NAME:$IMAGE_TAG $REPO_URI:$IMAGE_TAG
       - docker tag brain-task:latest 304534110140.dkr.ecr.ap-south-1.amazonaws.com/brain-task:latest
 
   post_build:
     commands:
       - echo "Pushing Docker image to Amazon ECR..."
-      - docker push $REPO_URI:$IMAGE_TAG
       - docker push 304534110140.dkr.ecr.ap-south-1.amazonaws.com/brain-task:latest
       - echo "Preparing Kubernetes manifests..."
       - mkdir -p build_artifact
