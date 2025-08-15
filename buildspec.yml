@@ -3,41 +3,38 @@ version: 0.2
 env:
   variables:
     REPOSITORY_NAME: brain-task
-    AWS_DEFAULT_REGION: us-east-1  # change as needed
+    AWS_DEFAULT_REGION: us-east-1
 
 phases:
   install:
     runtime-versions:
       nodejs: 18
     commands:
-      - echo "Installing dependencies..."
+      - cd frontend
       - if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR...
+      - cd frontend
       - export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
       - export REPO_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPO_URI
 
   build:
     commands:
-      - echo Build started on `date`
+      - cd frontend
       - export IMAGE_TAG=$CODEBUILD_RESOLVED_SOURCE_VERSION
       - docker build -t $REPOSITORY_NAME:$IMAGE_TAG .
-      - docker tag $REPOSITORY_NAME:$IMAGE_TAG $REPO_URI:$IMAGE_TAG
-      - docker tag $REPOSITORY_NAME:$IMAGE_TAG $REPO_URI:latest
+      - docker tag $REPO_NAME:$IMAGE_TAG $REPO_URI:$IMAGE_TAG
+      - docker tag $REPO_NAME:$IMAGE_TAG $REPO_URI:latest
 
   post_build:
     commands:
-      - echo Pushing Docker images to ECR...
       - docker push $REPO_URI:$IMAGE_TAG
       - docker push $REPO_URI:latest
-      - echo Creating Kubernetes manifests...
       - mkdir -p build_artifact
-      - sed "s|IMAGE_PLACEHOLDER|$REPO_URI:$IMAGE_TAG|g" k8s/deployment.yaml.template > build_artifact/deployment.yaml
-      - cp k8s/service.yaml build_artifact/service.yaml
-      - echo Build completed on `date`
+      - sed "s|IMAGE_PLACEHOLDER|$REPO_URI:$IMAGE_TAG|g" ../k8s/deployment.yaml.template > build_artifact/deployment.yaml
+      - cp ../k8s/service.yaml build_artifact/service.yaml
 
 artifacts:
   files:
