@@ -1,40 +1,45 @@
 version: 0.2
-
 env:
   variables:
     REPOSITORY_NAME: brain-task
+    AWS_ACCOUNT_ID: "304534110140"
+    AWS_DEFAULT_REGION: "ap-south-1"
 
 phases:
   install:
     runtime-versions:
       nodejs: 18
     commands:
-      - echo "install phase"
+      - echo "Installing dependencies..."
       - npm ci
+
   pre_build:
     commands:
-      - echo Logging in to ECR...
-      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - echo "Logging in to Amazon ECR..."
       - REPO_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME
       - aws --version
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPO_URI
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION \
+        | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+
   build:
     commands:
-      - echo Build Docker image...
+      - echo "Building the Docker image..."
       - IMAGE_TAG=$CODEBUILD_RESOLVED_SOURCE_VERSION
       - docker build -t $REPOSITORY_NAME:$IMAGE_TAG .
       - docker tag $REPOSITORY_NAME:$IMAGE_TAG $REPO_URI:$IMAGE_TAG
       - docker tag $REPOSITORY_NAME:$IMAGE_TAG $REPO_URI:latest
+
   post_build:
     commands:
-      - echo Pushing Docker image...
+      - echo "Pushing Docker image to Amazon ECR..."
       - docker push $REPO_URI:$IMAGE_TAG
       - docker push $REPO_URI:latest
-      - echo Replacing image placeholder in k8s manifest...
+      - echo "Preparing Kubernetes manifests..."
       - mkdir -p build_artifact
       - sed "s|IMAGE_PLACEHOLDER|$REPO_URI:$IMAGE_TAG|g" k8s/deployment.yaml.template > build_artifact/deployment.yaml
       - cp k8s/service.yaml build_artifact/service.yaml
-      - echo Build completed on `date`
+      - echo "Build completed on $(date)"
+
 artifacts:
   files:
     - build_artifact/deployment.yaml
