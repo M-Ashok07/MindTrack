@@ -3,7 +3,7 @@ version: 0.2
 env:
   variables:
     REPOSITORY_NAME: brain-task
-    AWS_DEFAULT_REGION: us-east-1
+    AWS_DEFAULT_REGION: us-south-1
 
 phases:
   install:
