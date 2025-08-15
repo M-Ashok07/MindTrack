@@ -11,34 +11,22 @@ phases:
     commands:
       - echo "Logging in to Amazon ECR..."
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)  # short commit hash
+      - echo "Image tag will be: $IMAGE_TAG"
 
   build:
     commands:
       - echo "Building Docker image..."
-      # Use commit hash as IMAGE_TAG
-      - IMAGE_TAG=$CODEBUILD_RESOLVED_SOURCE_VERSION
-      # Build image with two tags: commit hash and latest
       - docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG \
                      -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME:latest .
 
   post_build:
     commands:
-      - echo "Pushing Docker images to ECR..."
+      - echo "Pushing Docker images..."
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME:latest
-
-      - echo "Preparing Kubernetes manifests..."
-      - mkdir -p build_artifact
-      # Replace IMAGE_PLACEHOLDER in deployment template with commit hash image
-      - sed "s|IMAGE_PLACEHOLDER|$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG|g" \
-            k8s/deployment.yaml.template > build_artifact/deployment.yaml
-      - cp k8s/service.yaml build_artifact/service.yaml
-
-      - echo "Build completed on $(date)"
+      - echo "Build & push completed on $(date)"
 
 artifacts:
   files:
-    - build_artifact/deployment.yaml
-    - build_artifact/service.yaml
-
-
+    - '**/*'
